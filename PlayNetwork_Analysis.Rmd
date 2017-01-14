@@ -1,0 +1,127 @@
+---
+title: "Play Network Data Analysis"
+author: "Nelson Dsouza"
+date: "Nov 20, 2016"
+output: pdf_document
+---
+
+# Preperation
+
+Reading data
+```{r}
+udist.play <- read.csv("udist_play_98105.csv")
+```
+
+Plotting histograms of each variable.
+```{r, fig.width = 6, fig.height = 4, fig.align='center'}
+par(mfrow = c(3,3))
+for(i in 2:10){
+hist(udist.play[,i], main = names(udist.play)[i], xlab ="")
+}
+```
+
+Checking correlation
+```{r}
+# Calculating the correlation matrix
+up.cor <- cor(udist.play[,-1])
+up.cor
+```
+
+## PCA Analysis
+
+```{r}
+pc <- princomp(udist.play[,-1])
+```
+
+Let's examine the results of the PCA procedure. The \texttt{loadings} field gives the variable loadings and the \texttt{sdev} field gives the standard deviations of the principal components (square root of the eigenvalues). We can see that the first principal component captures roughly 97\% of the variability.   
+```{r}
+print(pc$loadings)
+
+pc$sdev^2
+
+summary(pc)
+```
+
+Looking at the magnitude of each eigenvalue 
+```{r, fig.width = 7, fig.height = 5}
+plot(pc, main = "Screeplot")
+```
+The first two eigenvalues are much larger than any of the remaining eigenvalues.
+
+Plotting cumulative variance explained to select how many principal components would be appropriate for adequately preserving "most of the information" in the data. 
+```{r}
+plot(cumsum(pc$sdev^2 / sum(pc$sdev^2)), xlab = "PCs", ylab = "Cumulative Var exp",
+     type = "b", ylim = c(0,1), main = "Scree plot")
+```
+
+If we plot the first two components, which capture nearly all of the variability, we see that there is a clear split of the players by position. The colors denote high level groupings: lineman, linebackers / RBs / TEs, WR / defensive backs.
+```{r}
+colors <- c("red", "blue", "orange", "red", "blue", "red", "orange", "orange", "red", "orange", "blue", "orange", "blue")
+plot(pc$scores[,1:2], type = "n", main = "First two PCs")
+text(pc$scores[,1:2], labels = as.character(udist.play[,1]), cex = .6,
+     col = colors[as.numeric(udist.play[,1])])
+```
+
+
+## PCA on Standardized variables
+
+```{r}
+# pc.scaled <- princomp(udist.play[,-1], cor = T)
+# summary(pc.scaled)
+```
+
+# Checking magnitude of each eigenvalue in a scree plot
+```{r}
+# plot(pc.scaled, type = "b", main = "Scree plot (correlation)")
+# abline(h = 1, col = "Red")
+```
+Since we've scaled the data, the sum of the eigenvalues is equal to the number of variables in our data set. So principal components with an eigenvalue greater than 1 are more informative than "average."
+
+While the first two PCs is still large relative to the other PCs, it takes more principal components to capture the same \% of variability than we were able to before with the covariance matrix. This does not necessarily mean that we are doing "worse." However, it is more an indication that most of the variability before was coming from a single source because of how we defined the units (ie, we had given ourselves a much easier but possibly less meaningful task before).
+
+Checking Scree plot
+```{r}
+# plot(cumsum(pc.scaled$sdev^2 / sum(pc.scaled$sdev^2)), xlab = "PCs", ylab = "Cumulative Var exp", type = "b", ylim = c(0,1), main = "Scree plot (Standardized)")
+```
+ 
+```{r}
+# colors <- c("red", "blue", "orange", "red", "blue", "red", "orange", "orange", "red", "orange", "blue", "orange", "blue")
+# plot(pc.scaled$scores[,1:2], type = "n", main = "Standardized Data")
+# text(pc.scaled$scores[,1:2], labels = as.character(udist.play[,1]), cex = .6,
+#      col = colors[as.numeric(udist.play[,1])])
+```
+
+## Factor Analysis
+
+```{r}
+library(GPArotation)
+
+fa <- factanal(udist.play[-1], factors = 2, rotation = "none", scores = "regression")
+fa.vm <- factanal(udist.play[-1], factors=2, rotation="varimax", scores="regression")
+fa.om <- factanal(udist.play[-1], factors=2, rotation="oblimin", scores="regression")
+
+fa
+```
+
+Checking reconstructed correlaton matrix for goodness of fit
+```{r}
+reconst.cor <- loadings(fa) %*% t(loadings(fa)) + diag(fa$uniquenesses)
+round(abs(reconst.cor - up.cor), 3)
+```
+
+Plotting the genres on 2 factors
+```{r}
+plot(fa.vm$loadings, xlim = c(-1, 1), ylim = c(-1, 1), main = "Loadings")
+
+abline(v = 0, h = 0, lty = 2)
+text(fa.vm$loadings, labels = colnames(udist.play)[-1], cex = .8)
+```
+
+Plotting the UDstrict stores for the 2 latent factors
+```{r}
+plot(fa.vm$scores, type="n", main="Factor Score with Varimax Rotation")
+abline(h = 0, v = 0, lty = 2)
+text(fa.vm$scores,labels = as.character(udist.play[,1]),cex=0.7)
+```
+
+
