@@ -1,6 +1,6 @@
 ---
 title: "Play Network Data Analysis"
-author: "Nelson Dsouza"
+author: "Team 4"
 date: "Nov 20, 2016"
 output: pdf_document
 ---
